@@ -14,7 +14,7 @@ public class DatabaseConnection {
 
     // Credenciales del usuario 'sa'
     private static final String USER = "sa";
-    private static final String PASSWORD = "Tu contraseña aca"; // Reemplazar por tu clave de 'sa'
+    private static final String PASSWORD = "Tu contraseña"; // Reemplazar por tu clave de 'sa'
 
     public static Connection getConnection() throws SQLException {
         try {
