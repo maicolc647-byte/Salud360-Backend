@@ -1,26 +1,33 @@
 package app.domain;
 
 public class ConsultaMedica {
-    private String idConsulta;
-    private String idCita;
+    private int id;
+    private int citaId;
+    private String pacienteId;
+    private String medicoId;
     private String diagnostico;
     private String tratamiento;
+    private String fechaRegistro;
 
-    public ConsultaMedica(String idCita, String diagnostico, String tratamiento) {
-        this.idCita = idCita;
+    public ConsultaMedica(int id, int citaId, String pacienteId, String medicoId, String diagnostico, String tratamiento, String fechaRegistro) {
+        this.id = id;
+        this.citaId = citaId;
+        this.pacienteId = pacienteId;
+        this.medicoId = medicoId;
         this.diagnostico = diagnostico;
         this.tratamiento = tratamiento;
+        this.fechaRegistro = fechaRegistro;
     }
 
-    public String getIdConsulta() { return idConsulta; }
-    public void setIdConsulta(String idConsulta) { this.idConsulta = idConsulta; }
+    public ConsultaMedica(int citaId, String pacienteId, String medicoId, String diagnostico, String tratamiento, String fechaRegistro) {
+        this(0, citaId, pacienteId, medicoId, diagnostico, tratamiento, fechaRegistro);
+    }
 
-    public String getIdCita() { return idCita; }
-    public void setIdCita(String idCita) { this.idCita = idCita; }
-
+    public int getId() { return id; }
+    public int getCitaId() { return citaId; }
+    public String getPacienteId() { return pacienteId; }
+    public String getMedicoId() { return medicoId; }
     public String getDiagnostico() { return diagnostico; }
-    public void setDiagnostico(String diagnostico) { this.diagnostico = diagnostico; }
-
     public String getTratamiento() { return tratamiento; }
-    public void setTratamiento(String tratamiento) { this.tratamiento = tratamiento; }
+    public String getFechaRegistro() { return fechaRegistro; }
 }

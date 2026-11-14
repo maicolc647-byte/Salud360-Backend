@@ -13,47 +13,32 @@ public class FarmaciaRepositorySqlServerAdapter implements FarmaciaRepositoryPor
 
     @Override
     public Medicamento guardar(Medicamento medicamento) {
-        String sql = "INSERT INTO Medicamentos (Id_Medicamento, Nombre, Laboratorio) VALUES (?, ?, ?)";
-
+        String sql = "INSERT INTO Medicamentos (nombre, presentacion, stock) VALUES (?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            int idMed = Integer.parseInt(medicamento.getIdMedicamento().replaceAll("[^0-9]", ""));
-
-            stmt.setInt(1, idMed);
-            stmt.setString(2, medicamento.getNombre());
-            stmt.setString(3, medicamento.getLaboratorio() != null ? medicamento.getLaboratorio() : "Genérico");
-
-            stmt.executeUpdate();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, medicamento.getNombre());
+            ps.setString(2, medicamento.getPresentacion());
+            ps.setInt(3, medicamento.getStock());
+            ps.executeUpdate();
             return medicamento;
-
         } catch (SQLException e) {
-            System.err.println("Error al guardar medicamento en SQL Server: " + e.getMessage());
-            return null;
+            throw new RuntimeException("Error al guardar medicamento en SQL Server: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public Optional<Medicamento> buscarPorId(String idMedicamento) {
-        String sql = "SELECT * FROM Medicamentos WHERE Id_Medicamento = ?";
-
+    public Optional<Medicamento> buscarPorId(int id) {
+        String sql = "SELECT * FROM Medicamentos WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, Integer.parseInt(idMedicamento.replaceAll("[^0-9]", "")));
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                Medicamento m = new Medicamento(
-                        String.valueOf(rs.getInt("Id_Medicamento")),
-                        rs.getString("Nombre"),
-                        rs.getString("Laboratorio"),
-                        100
-                );
-                return Optional.of(m);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapearMedicamento(rs));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error al buscar medicamento por ID: " + e.getMessage());
+            throw new RuntimeException("Error al buscar medicamento: " + e.getMessage(), e);
         }
         return Optional.empty();
     }
@@ -61,24 +46,38 @@ public class FarmaciaRepositorySqlServerAdapter implements FarmaciaRepositoryPor
     @Override
     public List<Medicamento> listarTodos() {
         List<Medicamento> lista = new ArrayList<>();
-        String sql = "SELECT * FROM Medicamentos";
-
+        String sql = "SELECT * FROM Medicamentos ORDER BY nombre ASC";
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                Medicamento m = new Medicamento(
-                        String.valueOf(rs.getInt("Id_Medicamento")),
-                        rs.getString("Nombre"),
-                        rs.getString("Laboratorio"),
-                        50
-                );
-                lista.add(m);
+                lista.add(mapearMedicamento(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error al listar medicamentos desde SQL Server: " + e.getMessage());
+            throw new RuntimeException("Error al listar inventario: " + e.getMessage(), e);
         }
         return lista;
+    }
+
+    @Override
+    public void actualizarStock(int id, int nuevoStock) {
+        String sql = "UPDATE Medicamentos SET stock = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, nuevoStock);
+            ps.setInt(2, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar stock en SQL Server: " + e.getMessage(), e);
+        }
+    }
+
+    private Medicamento mapearMedicamento(ResultSet rs) throws SQLException {
+        return new Medicamento(
+                rs.getInt("id"),
+                rs.getString("nombre"),
+                rs.getString("presentacion"),
+                rs.getInt("stock")
+        );
     }
 }

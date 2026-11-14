@@ -65,7 +65,7 @@ public class UserView {
         }
     }
 
-    public void iniciarSesion() {
+    public Optional<Usuario> iniciarSesion() {
         System.out.println("\n--- INICIO DE SESIÓN ---");
         System.out.print("Ingrese su correo electrónico: ");
         String correo = scanner.nextLine();
@@ -79,16 +79,18 @@ public class UserView {
         } else {
             System.err.println("❌ Credenciales incorrectas o usuario no registrado.");
         }
+        return opt;
     }
 
     public void listarUsuarios() {
-        System.out.println("\n--- LISTA DE PACIENTES Y USUARIOS EN SQL SERVER ---");
+        System.out.println("\n--- LISTA DE USUARIOS REGISTRADOS EN SQL SERVER ---");
         List<Usuario> lista = usuarioService.obtenerTodos();
         if (lista.isEmpty()) {
             System.out.println("No hay usuarios registrados en la base de datos.");
         } else {
             for (Usuario u : lista) {
-                System.out.println("ID: " + u.getId() + " | Nombre: " + u.getNombreCompleto() + " | Email: " + u.getCorreo() + " | Tel: " + u.getTelefono());
+                System.out.println("ID: " + u.getId() + " | Nombre: " + u.getNombreCompleto()
+                        + " | Rol: " + u.getRol() + " | Email: " + u.getCorreo() + " | Tel: " + u.getTelefono());
             }
         }
     }

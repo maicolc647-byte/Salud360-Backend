@@ -1,27 +1,25 @@
 package app.domain;
 
 public class Medicamento {
-    private String idMedicamento;
+    private int id;
     private String nombre;
-    private String laboratorio;
+    private String presentacion;
     private int stock;
 
-    public Medicamento(String idMedicamento, String nombre, String laboratorio, int stock) {
-        this.idMedicamento = idMedicamento;
+    public Medicamento(int id, String nombre, String presentacion, int stock) {
+        this.id = id;
         this.nombre = nombre;
-        this.laboratorio = laboratorio;
+        this.presentacion = presentacion;
         this.stock = stock;
     }
 
-    public String getIdMedicamento() { return idMedicamento; }
-    public void setIdMedicamento(String idMedicamento) { this.idMedicamento = idMedicamento; }
+    public Medicamento(String nombre, String presentacion, int stock) {
+        this(0, nombre, presentacion, stock);
+    }
 
+    public int getId() { return id; }
     public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-
-    public String getLaboratorio() { return laboratorio; }
-    public void setLaboratorio(String laboratorio) { this.laboratorio = laboratorio; }
-
+    public String getPresentacion() { return presentacion; }
     public int getStock() { return stock; }
     public void setStock(int stock) { this.stock = stock; }
 }
