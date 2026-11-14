@@ -6,6 +6,7 @@ import java.util.Optional;
 
 public interface FarmaciaRepositoryPort {
     Medicamento guardar(Medicamento medicamento);
-    Optional<Medicamento> buscarPorId(String idMedicamento);
+    Optional<Medicamento> buscarPorId(int id);
     List<Medicamento> listarTodos();
+    void actualizarStock(int id, int nuevoStock);
 }

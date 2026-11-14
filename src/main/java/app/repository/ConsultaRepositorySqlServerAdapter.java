@@ -7,82 +7,70 @@ import app.service.outputports.ConsultaRepositoryPort;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class ConsultaRepositorySqlServerAdapter implements ConsultaRepositoryPort {
 
     @Override
     public ConsultaMedica guardar(ConsultaMedica consulta) {
-        String sql = "INSERT INTO Consulta (Id_Cita, Motivo_Consulta, Observaciones) VALUES (?, ?, ?)";
-
+        String sql = "INSERT INTO ConsultasMedicas (citaId, pacienteId, medicoId, diagnostico, tratamiento, fechaRegistro) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            stmt.setInt(1, Integer.parseInt(consulta.getIdCita().replaceAll("[^0-9]", "")));
-            stmt.setString(2, consulta.getDiagnostico());
-            stmt.setString(3, consulta.getTratamiento());
-
-            stmt.executeUpdate();
-
-            ResultSet rs = stmt.getGeneratedKeys();
-            if (rs.next()) {
-                consulta.setIdConsulta(String.valueOf(rs.getInt(1)));
-            }
-
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, consulta.getCitaId());
+            ps.setString(2, consulta.getPacienteId());
+            ps.setString(3, consulta.getMedicoId());
+            ps.setString(4, consulta.getDiagnostico());
+            ps.setString(5, consulta.getTratamiento());
+            ps.setString(6, consulta.getFechaRegistro());
+            ps.executeUpdate();
             return consulta;
-
         } catch (SQLException e) {
-            System.err.println("Error al guardar consulta en SQL Server: " + e.getMessage());
-            return null;
+            throw new RuntimeException("Error al guardar consulta médica en SQL Server: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public Optional<ConsultaMedica> buscarPorId(String idConsulta) {
-        String sql = "SELECT * FROM Consulta WHERE Id_Consulta = ?";
-
+    public List<ConsultaMedica> listarPorPaciente(String pacienteId) {
+        List<ConsultaMedica> lista = new ArrayList<>();
+        String sql = "SELECT * FROM ConsultasMedicas WHERE pacienteId = ? ORDER BY id DESC";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, Integer.parseInt(idConsulta.replaceAll("[^0-9]", "")));
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                ConsultaMedica c = new ConsultaMedica(
-                        String.valueOf(rs.getInt("Id_Cita")),
-                        rs.getString("Motivo_Consulta"),
-                        rs.getString("Observaciones")
-                );
-                c.setIdConsulta(String.valueOf(rs.getInt("Id_Consulta")));
-                return Optional.of(c);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, pacienteId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearConsulta(rs));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error al buscar consulta por ID: " + e.getMessage());
+            throw new RuntimeException("Error al consultar historial clínico: " + e.getMessage(), e);
         }
-        return Optional.empty();
+        return lista;
     }
 
     @Override
     public List<ConsultaMedica> listarTodas() {
         List<ConsultaMedica> lista = new ArrayList<>();
-        String sql = "SELECT * FROM Consulta";
-
+        String sql = "SELECT * FROM ConsultasMedicas ORDER BY id DESC";
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                ConsultaMedica c = new ConsultaMedica(
-                        String.valueOf(rs.getInt("Id_Cita")),
-                        rs.getString("Motivo_Consulta"),
-                        rs.getString("Observaciones")
-                );
-                c.setIdConsulta(String.valueOf(rs.getInt("Id_Consulta")));
-                lista.add(c);
+                lista.add(mapearConsulta(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error al listar consultas de SQL Server: " + e.getMessage());
+            throw new RuntimeException("Error al listar consultas médicas: " + e.getMessage(), e);
         }
         return lista;
+    }
+
+    private ConsultaMedica mapearConsulta(ResultSet rs) throws SQLException {
+        return new ConsultaMedica(
+                rs.getInt("id"),
+                rs.getInt("citaId"),
+                rs.getString("pacienteId"),
+                rs.getString("medicoId"),
+                rs.getString("diagnostico"),
+                rs.getString("tratamiento"),
+                rs.getString("fechaRegistro")
+        );
     }
 }

@@ -14,62 +14,39 @@ public class CitaRepositorySqlServerAdapter implements CitaRepositoryPort {
 
     @Override
     public CitaMedica guardar(CitaMedica cita) {
-        String sql = "INSERT INTO Citas (Id_Paciente, Id_Profesional, Fecha, Hora, Estado) VALUES (?, ?, ?, ?, ?)";
-
+        String sql = "INSERT INTO CitasMedicas (pacienteId, medicoId, fechaHora, motivo, estado) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            int idPaciente = Integer.parseInt(cita.getIdPaciente().replaceAll("[^0-9]", ""));
-            int idMedico = Integer.parseInt(cita.getIdMedico().replaceAll("[^0-9]", ""));
-
-            stmt.setInt(1, idPaciente);
-            stmt.setInt(2, idMedico);
-            stmt.setDate(3, Date.valueOf(cita.getFecha()));
-            stmt.setTime(4, Time.valueOf(cita.getHora()));
-            stmt.setString(5, cita.getEstado().name());
-
-            stmt.executeUpdate();
-
-            ResultSet rs = stmt.getGeneratedKeys();
-            if (rs.next()) {
-                cita.setIdCita(String.valueOf(rs.getInt(1)));
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, cita.getPacienteId());
+            ps.setString(2, cita.getMedicoId());
+            ps.setString(3, cita.getFechaHora());
+            ps.setString(4, cita.getMotivo());
+            ps.setString(5, cita.getEstado().name());
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) {
+                    cita.setId(keys.getInt(1));
+                }
             }
-
             return cita;
-
         } catch (SQLException e) {
-            System.err.println("Error al guardar la cita en SQL Server: " + e.getMessage());
-            return null;
+            throw new RuntimeException("Error al guardar cita en SQL Server: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public Optional<CitaMedica> buscarPorId(String idCita) {
-        String sql = "SELECT * FROM Citas WHERE Id_Cita = ?";
-
+    public Optional<CitaMedica> buscarPorId(int id) {
+        String sql = "SELECT * FROM CitasMedicas WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, Integer.parseInt(idCita.replaceAll("[^0-9]", "")));
-            ResultSet rs = stmt.executeQuery();
-
-            if (rs.next()) {
-                CitaMedica cita = new CitaMedica(
-                        String.valueOf(rs.getInt("Id_Paciente")),
-                        String.valueOf(rs.getInt("Id_Profesional")),
-                        rs.getDate("Fecha").toLocalDate(),
-                        rs.getTime("Hora").toLocalTime()
-                );
-                cita.setIdCita(String.valueOf(rs.getInt("Id_Cita")));
-                try {
-                    cita.setEstado(EstadoCita.valueOf(rs.getString("Estado").toUpperCase()));
-                } catch (Exception e) {
-                    cita.setEstado(EstadoCita.PROGRAMADA);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapearCita(rs));
                 }
-                return Optional.of(cita);
             }
         } catch (SQLException e) {
-            System.err.println("Error al buscar cita por ID: " + e.getMessage());
+            throw new RuntimeException("Error al buscar cita por ID: " + e.getMessage(), e);
         }
         return Optional.empty();
     }
@@ -77,57 +54,76 @@ public class CitaRepositorySqlServerAdapter implements CitaRepositoryPort {
     @Override
     public List<CitaMedica> listarTodas() {
         List<CitaMedica> lista = new ArrayList<>();
-        String sql = "SELECT * FROM Citas";
-
+        String sql = "SELECT * FROM CitasMedicas ORDER BY id DESC";
         try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
-                CitaMedica cita = new CitaMedica(
-                        String.valueOf(rs.getInt("Id_Paciente")),
-                        String.valueOf(rs.getInt("Id_Profesional")),
-                        rs.getDate("Fecha").toLocalDate(),
-                        rs.getTime("Hora").toLocalTime()
-                );
-                cita.setIdCita(String.valueOf(rs.getInt("Id_Cita")));
-                try {
-                    cita.setEstado(EstadoCita.valueOf(rs.getString("Estado").toUpperCase()));
-                } catch (Exception e) {
-                    cita.setEstado(EstadoCita.PROGRAMADA);
-                }
-                lista.add(cita);
+                lista.add(mapearCita(rs));
             }
         } catch (SQLException e) {
-            System.err.println("Error al listar citas desde SQL Server: " + e.getMessage());
+            throw new RuntimeException("Error al listar citas: " + e.getMessage(), e);
         }
         return lista;
     }
 
     @Override
-    public List<CitaMedica> buscarPorPaciente(String idPaciente) {
+    public List<CitaMedica> listarPorPaciente(String pacienteId) {
         List<CitaMedica> lista = new ArrayList<>();
-        String sql = "SELECT * FROM Citas WHERE Id_Paciente = ?";
-
+        String sql = "SELECT * FROM CitasMedicas WHERE pacienteId = ? ORDER BY id DESC";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setInt(1, Integer.parseInt(idPaciente.replaceAll("[^0-9]", "")));
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                CitaMedica cita = new CitaMedica(
-                        String.valueOf(rs.getInt("Id_Paciente")),
-                        String.valueOf(rs.getInt("Id_Profesional")),
-                        rs.getDate("Fecha").toLocalDate(),
-                        rs.getTime("Hora").toLocalTime()
-                );
-                cita.setIdCita(String.valueOf(rs.getInt("Id_Cita")));
-                lista.add(cita);
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, pacienteId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    lista.add(mapearCita(rs));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Error al buscar citas por paciente: " + e.getMessage());
+            throw new RuntimeException("Error al listar citas del paciente: " + e.getMessage(), e);
         }
         return lista;
+    }
+
+    @Override
+    public void actualizarEstado(int id, EstadoCita nuevoEstado) {
+        String sql = "UPDATE CitasMedicas SET estado = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nuevoEstado.name());
+            ps.setInt(2, id);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar estado de cita: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public boolean existeCruceHorario(String medicoId, String fechaHora) {
+        String sql = "SELECT COUNT(*) FROM CitasMedicas WHERE medicoId = ? AND fechaHora = ? AND estado <> 'CANCELADA'";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, medicoId);
+            ps.setString(2, fechaHora);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al verificar cruce de horario: " + e.getMessage(), e);
+        }
+        return false;
+    }
+
+    private CitaMedica mapearCita(ResultSet rs) throws SQLException {
+        return new CitaMedica(
+                rs.getInt("id"),
+                rs.getString("pacienteId"),
+                rs.getString("medicoId"),
+                rs.getString("fechaHora"),
+                rs.getString("motivo"),
+                EstadoCita.valueOf(rs.getString("estado"))
+        );
     }
 }
